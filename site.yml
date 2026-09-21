@@ -1,0 +1,10 @@
+---
+# Full deploy entry point.
+# Usage: ansible-playbook site.yml [--tags preflight]
+
+- name: bootstrap ai inference platform
+  hosts: gpu_nodes
+  become: true
+  gather_facts: true
+  roles:
+    - preflight

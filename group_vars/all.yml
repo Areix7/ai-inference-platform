@@ -1,0 +1,21 @@
+---
+# Global variables for AI Inference Platform.
+# All role-level tunables live here. Do not edit roles for env changes.
+
+data_dir: /opt/ai-inference-platform/data
+fallback_data_dir: /opt
+
+# vLLM
+vllm_model: "Qwen/Qwen2.5-7B-Instruct"
+vllm_port: 8000
+vllm_host: "0.0.0.0"
+vllm_gpu_memory_utilization: 0.90
+vllm_max_model_len: 8192
+vllm_dtype: "auto"
+
+# System
+timezone: "Asia/Shanghai"
+
+# Disk thresholds for inspect role
+disk_warn_percent: 80
+disk_crit_percent: 90

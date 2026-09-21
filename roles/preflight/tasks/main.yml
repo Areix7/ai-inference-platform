@@ -1,0 +1,106 @@
+---
+# Preflight checks. Read-only, no system changes.
+
+- name: assert almalinux 10
+  assert:
+    that:
+      - ansible_facts['distribution'] == 'AlmaLinux'
+      - ansible_facts['distribution_major_version'] == '10'
+    fail_msg: "expected AlmaLinux 10, got {{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_version'] }}"
+  tags: [preflight, preflight_os]
+
+- name: assert minimum cpu cores
+  assert:
+    that: ansible_facts['processor_vcpus'] >= 8
+    fail_msg: "at least 8 vcpus required, found {{ ansible_facts['processor_vcpus'] }}"
+  tags: [preflight, preflight_hw]
+
+- name: assert minimum memory
+  assert:
+    that: ansible_facts['memtotal_mb'] >= 16000
+    fail_msg: "at least 16 GB RAM required, found {{ ansible_facts['memtotal_mb'] }} MB"
+  tags: [preflight, preflight_hw]
+
+- name: list pci devices
+  command: lspci
+  register: preflight_lspci
+  changed_when: false
+  failed_when: false
+  tags: [preflight, preflight_gpu]
+
+- name: assert nvidia gpu present on PCI bus
+  assert:
+    that: "'NVIDIA' in preflight_lspci.stdout"
+    fail_msg: "no NVIDIA GPU found on PCI bus"
+  tags: [preflight, preflight_gpu]
+
+- name: probe nvidia-smi
+  command: nvidia-smi
+  register: preflight_smi
+  changed_when: false
+  failed_when: false
+  tags: [preflight, preflight_gpu]
+
+- name: warn if nvidia driver not loaded
+  debug:
+    msg: "WARNING: nvidia-smi not working. Driver will be installed by nvidia role."
+  when: preflight_smi.rc != 0
+  tags: [preflight, preflight_gpu]
+
+- name: ensure data dir exists
+  file:
+    path: "{{ data_dir | default('/opt/inference') }}"
+    state: directory
+    mode: "0755"
+  tags: [preflight, preflight_disk]
+
+- name: gather free space on data dir
+  command: df --output=avail -B1 "{{ data_dir | default('/opt/inference') }}"
+  register: preflight_disk_raw
+  changed_when: false
+  failed_when: false
+  tags: [preflight, preflight_disk]
+
+- name: parse free space in GiB
+  set_fact:
+    preflight_disk_free_gb: "{{ (preflight_disk_raw.stdout_lines[-1] | trim | int / 1073741824) | round(0, 'floor') | int }}"
+  when:
+    - preflight_disk_raw.rc == 0
+    - preflight_disk_raw.stdout_lines | length > 1
+  tags: [preflight, preflight_disk]
+
+- name: assert minimum free space on data dir
+  assert:
+    that: preflight_disk_free_gb | int >= 20
+    fail_msg: "at least 20 GB free required, found {{ preflight_disk_free_gb }} GB"
+  when: preflight_disk_free_gb is defined
+  tags: [preflight, preflight_disk]
+
+- name: read selinux mode
+  command: getenforce
+  register: preflight_selinux
+  changed_when: false
+  failed_when: false
+  tags: [preflight, preflight_security]
+
+- name: read firewalld state
+  command: systemctl is-active firewalld
+  register: preflight_firewalld
+  changed_when: false
+  failed_when: false
+  tags: [preflight, preflight_security]
+
+- name: preflight summary
+  debug:
+    msg:
+      - "os          : {{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_version'] }}"
+      - "kernel      : {{ ansible_facts['kernel'] }}"
+      - "cpu cores   : {{ ansible_facts['processor_vcpus'] }}"
+      - "memory      : {{ ansible_facts['memtotal_mb'] }} MB"
+      - "gpu(pci)    : {{ preflight_lspci.stdout | default('') | regex_search('NVIDIA[^\\n]*') | default('n/a', true) }}"
+      - "nvidia-smi  : {{ 'installed' if preflight_smi.rc == 0 else 'not installed' }}"
+      - "data dir    : {{ data_dir | default('/opt/inference') }}"
+      - "disk free   : {{ preflight_disk_free_gb | default('unknown') }} GiB"
+      - "selinux     : {{ preflight_selinux.stdout | default('unknown', true) }}"
+      - "firewalld   : {{ preflight_firewalld.stdout | default('unknown', true) }}"
+  tags: [preflight, preflight_summary]
