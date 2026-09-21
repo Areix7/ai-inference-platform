@@ -52,6 +52,23 @@
     state: present
   tags: [docker, docker_nvidia]
 
+- name: configure docker registry mirrors
+  copy:
+    dest: /etc/docker/daemon.json
+    content: |
+      {
+        "registry-mirrors": [
+          "https://docker.m.daocloud.io",
+          "https://docker.1panel.live",
+          "https://hub.rat.dev",
+          "https://dockerproxy.net"
+        ]
+      }
+    owner: root
+    group: root
+    mode: "0644"
+  tags: [docker, docker_mirror]
+
 - name: configure nvidia runtime for docker
   command: nvidia-ctk runtime configure --runtime=docker
   register: nvctk
