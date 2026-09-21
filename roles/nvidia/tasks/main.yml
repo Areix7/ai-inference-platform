@@ -1,3 +1,99 @@
-#SPDX-License-Identifier: MIT-0
 ---
-# tasks file for nvidia
+# Install NVIDIA driver from the official CUDA repo.
+# Idempotent: skips if nvidia-smi already works.
+
+- name: check if nvidia-smi works
+  command: nvidia-smi
+  register: nvidia_pre_check
+  changed_when: false
+  failed_when: false
+  tags: [nvidia, nvidia_check]
+
+- name: skip driver install if already working
+  meta: end_host
+  when: nvidia_pre_check.rc == 0
+  tags: [nvidia, nvidia_check]
+
+- name: assert nvidia gpu present on PCI bus
+  assert:
+    that: "'NVIDIA' in (lspci.stdout | default(''))"
+    fail_msg: "no NVIDIA GPU found on PCI bus"
+  vars:
+    lspci:
+      stdout: "{{ lookup('pipe', 'lspci') }}"
+  tags: [nvidia, nvidia_check]
+
+- name: install build dependencies
+  dnf:
+    name:
+      - kernel-devel
+      - kernel-headers
+      - gcc
+      - make
+      - dkms
+      - pciutils
+      - elfutils-libelf-devel
+    state: present
+  tags: [nvidia, nvidia_deps]
+
+- name: disable nouveau
+  copy:
+    dest: /etc/modprobe.d/blacklist-nouveau.conf
+    content: |
+      blacklist nouveau
+      options nouveau modeset=0
+    owner: root
+    group: root
+    mode: '0644'
+  register: nouveau_blacklist
+  tags: [nvidia, nvidia_config]
+
+- name: rebuild initramfs if nouveau config changed
+  command: dracut --force
+  when: nouveau_blacklist.changed
+  tags: [nvidia, nvidia_config]
+
+- name: add nvidia cuda repo
+  yum_repository:
+    name: cuda-rhel10
+    description: NVIDIA CUDA repo for RHEL 10
+    baseurl: https://developer.download.nvidia.com/compute/cuda/repos/rhel9/x86_64
+    gpgcheck: false
+    enabled: true
+  tags: [nvidia, nvidia_repo]
+
+- name: install nvidia driver
+  dnf:
+    name:
+      - nvidia-driver
+      - nvidia-driver-cuda
+    state: present
+    update_cache: true
+    disable_gpg_check: true
+  register: nvidia_driver_install
+  tags: [nvidia, nvidia_driver]
+
+- name: load nvidia kernel module
+  command: modprobe nvidia
+  when: nvidia_driver_install.changed
+  failed_when: false
+  tags: [nvidia, nvidia_driver]
+
+- name: verify nvidia-smi
+  command: nvidia-smi
+  register: nvidia_post_check
+  changed_when: false
+  failed_when: false
+  tags: [nvidia, nvidia_verify]
+
+- name: show nvidia-smi output
+  debug:
+    var: nvidia_post_check.stdout_lines
+  when: nvidia_post_check.rc == 0
+  tags: [nvidia, nvidia_verify]
+
+- name: fail if nvidia-smi still broken
+  fail:
+    msg: "nvidia-smi failed after driver install. A reboot may be required."
+  when: nvidia_post_check.rc != 0
+  tags: [nvidia, nvidia_verify]

@@ -2,7 +2,7 @@
 # Global variables for AI Inference Platform.
 # All role-level tunables live here. Do not edit roles for env changes.
 
-data_dir: /opt/ai-inference-platform/data
+data_dir: /root/ai-inference-platform//data
 fallback_data_dir: /opt
 
 # vLLM

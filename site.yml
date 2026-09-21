@@ -8,3 +8,4 @@
   gather_facts: true
   roles:
     - preflight
+    - nvidia
