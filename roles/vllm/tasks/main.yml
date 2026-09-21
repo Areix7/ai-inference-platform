@@ -1,3 +1,63 @@
-#SPDX-License-Identifier: MIT-0
 ---
-# tasks file for vllm
+# Deploy vLLM as a systemd-managed Docker container.
+# Model is downloaded on first start, cached in data_dir/hf-cache.
+
+- name: ensure vllm base directories exist
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - /opt/vllm
+    - "{{ data_dir }}"
+    - "{{ data_dir }}/models"
+    - "{{ data_dir }}/hf-cache"
+  tags: [vllm]
+
+- name: pull vllm image
+  command: docker pull {{ vllm_image }}
+  register: vllm_pull
+  changed_when: "'Downloaded newer image' in vllm_pull.stdout or 'Pull complete' in vllm_pull.stdout"
+  failed_when: vllm_pull.rc != 0
+  tags: [vllm, vllm_image]
+
+- name: deploy vllm systemd unit
+  template:
+    src: vllm.service.j2
+    dest: /etc/systemd/system/vllm.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: reload systemd and restart vllm
+  tags: [vllm, vllm_systemd]
+
+- name: flush handlers so vllm starts before verification
+  meta: flush_handlers
+  tags: [vllm, vllm_systemd]
+
+- name: wait for vllm to respond
+  uri:
+    url: "http://127.0.0.1:{{ vllm_port }}/v1/models"
+    status_code: 200
+    timeout: 15
+  register: vllm_ready
+  until: vllm_ready.status == 200
+  retries: 60
+  delay: 10
+  tags: [vllm, vllm_verify]
+
+- name: check vllm metrics endpoint
+  uri:
+    url: "http://127.0.0.1:{{ vllm_port }}/metrics"
+    status_code: 200
+    timeout: 15
+  register: vllm_metrics
+  tags: [vllm, vllm_verify]
+
+- name: print vllm status
+  debug:
+    msg:
+      - "api       : http://{{ vllm_host }}:{{ vllm_port }}/v1/models"
+      - "metrics   : http://{{ vllm_host }}:{{ vllm_port }}/metrics"
+      - "model     : {{ vllm_model }}"
+  tags: [vllm, vllm_verify]

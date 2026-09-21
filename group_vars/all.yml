@@ -18,4 +18,4 @@ timezone: "Asia/Shanghai"
 
 # Disk thresholds for inspect role
 disk_warn_percent: 80
-disk_crit_percent: 90
+disk_crit_percent: 90vllm_image: "vllm/vllm-openai:latest"
