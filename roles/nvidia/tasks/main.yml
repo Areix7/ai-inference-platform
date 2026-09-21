@@ -10,7 +10,7 @@
   tags: [nvidia, nvidia_check]
 
 - name: skip driver install if already working
-  meta: end_host
+  meta: end_role
   when: nvidia_pre_check.rc == 0
   tags: [nvidia, nvidia_check]
 

@@ -1,3 +1,100 @@
-#SPDX-License-Identifier: MIT-0
 ---
-# tasks file for docker
+# Install Docker CE + nvidia-container-toolkit.
+
+- name: check if docker already works
+  command: docker info
+  register: docker_pre
+  changed_when: false
+  failed_when: false
+  tags: [docker]
+
+- name: skip if docker + nvidia runtime already configured
+  meta: end_host
+  when:
+    - docker_pre.rc == 0
+    - "'nvidia' in docker_pre.stdout"
+  tags: [docker]
+
+- name: add docker ce repo
+  yum_repository:
+    name: docker-ce
+    description: Docker CE Stable
+    baseurl: https://mirrors.aliyun.com/docker-ce/linux/centos/9/x86_64/stable
+    gpgcheck: true
+    gpgkey: https://mirrors.aliyun.com/docker-ce/linux/centos/gpg
+    enabled: true
+  tags: [docker]
+
+- name: install docker packages
+  dnf:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+    state: present
+    update_cache: true
+  tags: [docker]
+
+- name: add nvidia container toolkit repo
+  yum_repository:
+    name: libnvidia-container
+    description: NVIDIA Container Toolkit
+    baseurl: https://nvidia.github.io/libnvidia-container/stable/rpm/x86_64
+    gpgcheck: false
+    enabled: true
+  tags: [docker, docker_nvidia]
+
+- name: install nvidia-container-toolkit
+  dnf:
+    name: nvidia-container-toolkit
+    state: present
+  tags: [docker, docker_nvidia]
+
+- name: configure nvidia runtime for docker
+  command: nvidia-ctk runtime configure --runtime=docker
+  register: nvctk
+  changed_when: nvctk.rc == 0
+  tags: [docker, docker_nvidia]
+
+- name: enable and start docker
+  systemd:
+    name: docker
+    state: started
+    enabled: true
+    daemon_reload: true
+  tags: [docker, docker_service]
+
+- name: restart docker after nvidia config
+  systemd:
+    name: docker
+    state: restarted
+  when: nvctk.changed
+  tags: [docker, docker_service]
+
+- name: verify docker version
+  command: docker --version
+  register: docker_ver
+  changed_when: false
+  tags: [docker, docker_verify]
+
+- name: verify gpu access in container
+  command: docker run --rm --gpus all nvidia/cuda:12.4.0-base-rockylinux9 nvidia-smi
+  register: gpu_test
+  changed_when: false
+  failed_when: false
+  tags: [docker, docker_verify]
+
+- name: print docker verification
+  debug:
+    msg:
+      - "docker   : {{ docker_ver.stdout }}"
+      - "gpu in docker : {{ 'OK' if gpu_test.rc == 0 else 'FAILED' }}"
+  tags: [docker, docker_verify]
+
+- name: fail if gpu not accessible in docker
+  fail:
+    msg: "GPU not accessible inside docker container. Check nvidia-container-toolkit."
+  when: gpu_test.rc != 0
+  tags: [docker, docker_verify]
