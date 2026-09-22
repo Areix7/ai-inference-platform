@@ -1,0 +1,33 @@
+[Unit]
+Description=vLLM inference server
+After=docker.service network-online.target
+Requires=docker.service
+
+[Service]
+Restart=always
+RestartSec=10
+TimeoutStartSec=0
+
+ExecStartPre=-/usr/bin/docker stop vllm
+ExecStartPre=-/usr/bin/docker rm vllm
+
+ExecStart=/usr/bin/docker run --rm --name vllm \
+  --gpus all \
+  --ipc=host \
+  -p {{ vllm_port }}:{{ vllm_port }} \
+  -v {{ data_dir }}/hf-cache/models:/models \
+  -v {{ data_dir }}/hf-cache:/root/.cache/huggingface \
+  -e HF_HOME=/root/.cache/huggingface \
+  {{ vllm_image }} \
+  --model /models/Qwen2.5-7B-Instruct \
+  --served-model-name Qwen2.5-7B-Instruct \
+  --host {{ vllm_host }} \
+  --port {{ vllm_port }} \
+  --gpu-memory-utilization {{ vllm_gpu_memory_utilization }} \
+  --max-model-len {{ vllm_max_model_len }} \
+  --dtype {{ vllm_dtype }}
+
+ExecStop=/usr/bin/docker stop vllm
+
+[Install]
+WantedBy=multi-user.target

@@ -1,2 +1,2 @@
 [gpu_nodes]
-gpu01 ansible_host=121.43.139.181 ansible_user=root  ansible_ssh_private_key_file=/root/.ssh/id_ed25519
+gpu01 ansible_host=47.97.225.219 ansible_user=root  ansible_ssh_private_key_file=/root/.ssh/id_ed25519

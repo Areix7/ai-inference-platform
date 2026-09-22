@@ -9,7 +9,7 @@
   tags: [docker]
 
 - name: skip if docker + nvidia runtime already configured
-  meta: end_host
+  meta: end_role
   when:
     - docker_pre.rc == 0
     - "'nvidia' in docker_pre.stdout"
