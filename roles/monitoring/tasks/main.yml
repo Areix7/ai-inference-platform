@@ -1,5 +1,6 @@
 ---
-# Deploy DCGM Exporter as systemd-managed Docker container.
+
+# DCGM Exporter
 
 - name: pull dcgm-exporter image
   command: docker pull {{ dcgm_exporter_image }}
@@ -51,7 +52,6 @@
       - "dcgm metric lines: {{ dcgm_count.stdout }}"
   tags: [monitoring, dcgm, dcgm_verify]
 
-# ============ Prometheus ============
 
 - name: ensure prometheus config dir exists
   file:
@@ -105,3 +105,101 @@
     msg:
       - "prometheus: http://localhost:{{ prometheus_port }}"
   tags: [monitoring, prometheus, prometheus_verify]
+
+
+- name: ensure grafana directories exist
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - /opt/grafana
+    - /opt/grafana/data
+    - /opt/grafana/provisioning
+    - /opt/grafana/provisioning/datasources
+    - /opt/grafana/provisioning/dashboards
+    - /opt/grafana/dashboards
+  tags: [monitoring, grafana]
+
+- name: chown grafana data dir to 472
+  file:
+    path: /opt/grafana/data
+    owner: 472
+    group: 472
+    recurse: true
+  tags: [monitoring, grafana]
+
+- name: render grafana datasource provisioning
+  template:
+    src: grafana-datasource.yml.j2
+    dest: /opt/grafana/provisioning/datasources/prometheus.yml
+    owner: root
+    group: root
+    mode: "0644"
+  tags: [monitoring, grafana]
+
+- name: render grafana dashboard provisioning
+  template:
+    src: grafana-dashboards.yml.j2
+    dest: /opt/grafana/provisioning/dashboards/dashboards.yml
+    owner: root
+    group: root
+    mode: "0644"
+  tags: [monitoring, grafana]
+
+- name: copy gpu dashboard json
+  copy:
+    src: gpu-dashboard.json
+    dest: /opt/grafana/dashboards/gpu.json
+    owner: root
+    group: root
+    mode: "0644"
+  tags: [monitoring, grafana]
+
+- name: copy vllm dashboard json
+  copy:
+    src: vllm-dashboard.json
+    dest: /opt/grafana/dashboards/vllm.json
+    owner: root
+    group: root
+    mode: "0644"
+  tags: [monitoring, grafana]
+
+- name: pull grafana image
+  command: docker pull {{ grafana_image }}
+  register: grafana_pull
+  changed_when: "'Downloaded newer image' in grafana_pull.stdout or 'Pull complete' in grafana_pull.stdout"
+  tags: [monitoring, grafana]
+
+- name: deploy grafana systemd unit
+  template:
+    src: grafana.service.j2
+    dest: /etc/systemd/system/grafana.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: reload systemd and restart grafana
+  tags: [monitoring, grafana, grafana_systemd]
+
+- name: flush handlers after grafana
+  meta: flush_handlers
+  tags: [monitoring, grafana]
+
+- name: wait for grafana to respond
+  uri:
+    url: "http://127.0.0.1:{{ grafana_port }}/api/health"
+    status_code: 200
+    timeout: 10
+  register: grafana_ready
+  until: grafana_ready.status == 200
+  retries: 30
+  delay: 5
+  tags: [monitoring, grafana, grafana_verify]
+
+- name: print grafana status
+  debug:
+    msg:
+      - "grafana: http://localhost:{{ grafana_port }}"
+      - "user: admin"
+      - "password: {{ grafana_admin_password }}"
+  tags: [monitoring, grafana, grafana_verify]

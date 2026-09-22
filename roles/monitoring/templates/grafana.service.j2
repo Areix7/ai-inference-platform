@@ -1,0 +1,27 @@
+[Unit]
+Description=Grafana
+After=docker.service network-online.target
+Requires=docker.service
+
+[Service]
+Restart=always
+RestartSec=10
+TimeoutStartSec=0
+
+ExecStartPre=-/usr/bin/docker stop grafana
+ExecStartPre=-/usr/bin/docker rm grafana
+
+ExecStart=/usr/bin/docker run --rm --name grafana \
+  --add-host=host.docker.internal:host-gateway \
+  -p {{ grafana_port }}:3000 \
+  -e GF_SECURITY_ADMIN_PASSWORD={{ grafana_admin_password }} \
+  -e GF_USERS_ALLOW_SIGN_UP=false \
+  -v /opt/grafana/data:/var/lib/grafana \
+  -v /opt/grafana/provisioning:/etc/grafana/provisioning:ro \
+  -v /opt/grafana/dashboards:/var/lib/grafana/dashboards:ro \
+  {{ grafana_image }}
+
+ExecStop=/usr/bin/docker stop grafana
+
+[Install]
+WantedBy=multi-user.target
