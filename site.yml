@@ -8,3 +8,4 @@
     - nvidia
     - docker
     - vllm
+    - monitoring

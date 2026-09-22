@@ -1,0 +1,28 @@
+[Unit]
+Description=Prometheus
+After=docker.service network-online.target
+Requires=docker.service
+
+[Service]
+Restart=always
+RestartSec=10
+TimeoutStartSec=0
+
+ExecStartPre=-/usr/bin/docker stop prometheus
+ExecStartPre=-/usr/bin/docker rm prometheus
+
+ExecStart=/usr/bin/docker run --rm --name prometheus \
+  --add-host=host.docker.internal:host-gateway \
+  -p {{ prometheus_port }}:9090 \
+  -v /opt/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro \
+  -v /opt/prometheus/data:/prometheus \
+  {{ prometheus_image }} \
+  --config.file=/etc/prometheus/prometheus.yml \
+  --storage.tsdb.path=/prometheus \
+  --storage.tsdb.retention.time={{ prometheus_retention }} \
+  --web.enable-lifecycle
+
+ExecStop=/usr/bin/docker stop prometheus
+
+[Install]
+WantedBy=multi-user.target

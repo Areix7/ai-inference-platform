@@ -1,3 +1,14 @@
-#SPDX-License-Identifier: MIT-0
 ---
-# handlers file for monitoring
+- name: reload systemd and restart dcgm-exporter
+  systemd:
+    name: dcgm-exporter
+    state: restarted
+    enabled: true
+    daemon_reload: true
+
+- name: reload systemd and restart prometheus
+  systemd:
+    name: prometheus
+    state: restarted
+    enabled: true
+    daemon_reload: true

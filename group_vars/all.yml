@@ -19,3 +19,12 @@ timezone: "Asia/Shanghai"
 # Disk thresholds for inspect role
 disk_warn_percent: 80
 vllm_image: "vllm/vllm-openai:latest"
+
+# Monitoring
+dcgm_port: 9400
+dcgm_exporter_image: "nvcr.io/nvidia/k8s/dcgm-exporter:3.3.9-3.6.1-ubi9"
+
+# Prometheus
+prometheus_port: 9090
+prometheus_retention: "15d"
+prometheus_image: "prom/prometheus:latest"

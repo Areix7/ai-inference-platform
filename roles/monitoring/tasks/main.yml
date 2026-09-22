@@ -1,3 +1,107 @@
-#SPDX-License-Identifier: MIT-0
 ---
-# tasks file for monitoring
+# Deploy DCGM Exporter as systemd-managed Docker container.
+
+- name: pull dcgm-exporter image
+  command: docker pull {{ dcgm_exporter_image }}
+  register: dcgm_pull
+  changed_when: "'Downloaded newer image' in dcgm_pull.stdout or 'Pull complete' in dcgm_pull.stdout"
+  tags: [monitoring, dcgm]
+
+- name: deploy dcgm-exporter systemd unit
+  template:
+    src: dcgm-exporter.service.j2
+    dest: /etc/systemd/system/dcgm-exporter.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: reload systemd and restart dcgm-exporter
+  tags: [monitoring, dcgm, dcgm_systemd]
+
+- name: flush handlers after dcgm-exporter
+  meta: flush_handlers
+  tags: [monitoring, dcgm]
+
+- name: wait for dcgm-exporter to respond
+  uri:
+    url: "http://127.0.0.1:{{ dcgm_port }}/metrics"
+    status_code: 200
+    timeout: 10
+  register: dcgm_ready
+  until: dcgm_ready.status == 200
+  retries: 30
+  delay: 5
+  tags: [monitoring, dcgm, dcgm_verify]
+
+- name: count dcgm metrics
+  shell: "curl -s http://127.0.0.1:{{ dcgm_port }}/metrics | grep -c 'DCGM_FI' || true"
+  register: dcgm_count
+  changed_when: false
+  tags: [monitoring, dcgm, dcgm_verify]
+
+- name: assert dcgm metrics present
+  assert:
+    that: dcgm_count.stdout | int > 0
+    fail_msg: "no DCGM_FI metrics found, dcgm-exporter may be broken"
+  tags: [monitoring, dcgm, dcgm_verify]
+
+- name: print dcgm status
+  debug:
+    msg:
+      - "dcgm exporter: http://localhost:{{ dcgm_port }}/metrics"
+      - "dcgm metric lines: {{ dcgm_count.stdout }}"
+  tags: [monitoring, dcgm, dcgm_verify]
+
+# ============ Prometheus ============
+
+- name: ensure prometheus config dir exists
+  file:
+    path: /opt/prometheus
+    state: directory
+    mode: "0755"
+  tags: [monitoring, prometheus]
+
+- name: render prometheus config
+  template:
+    src: prometheus.yml.j2
+    dest: /opt/prometheus/prometheus.yml
+    owner: root
+    group: root
+    mode: "0644"
+  tags: [monitoring, prometheus]
+
+- name: pull prometheus image
+  command: docker pull {{ prometheus_image }}
+  register: prom_pull
+  changed_when: "'Downloaded newer image' in prom_pull.stdout or 'Pull complete' in prom_pull.stdout"
+  tags: [monitoring, prometheus]
+
+- name: deploy prometheus systemd unit
+  template:
+    src: prometheus.service.j2
+    dest: /etc/systemd/system/prometheus.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: reload systemd and restart prometheus
+  tags: [monitoring, prometheus, prometheus_systemd]
+
+- name: flush handlers after prometheus
+  meta: flush_handlers
+  tags: [monitoring, prometheus]
+
+- name: wait for prometheus to respond
+  uri:
+    url: "http://127.0.0.1:{{ prometheus_port }}/-/healthy"
+    status_code: 200
+    timeout: 10
+  register: prom_ready
+  until: prom_ready.status == 200
+  retries: 30
+  delay: 5
+  tags: [monitoring, prometheus, prometheus_verify]
+
+- name: print prometheus status
+  debug:
+    msg:
+      - "prometheus: http://localhost:{{ prometheus_port }}"
+  tags: [monitoring, prometheus, prometheus_verify]

@@ -1,0 +1,23 @@
+[Unit]
+Description=DCGM Exporter for NVIDIA GPU metrics
+After=docker.service network-online.target
+Requires=docker.service
+
+[Service]
+Restart=always
+RestartSec=10
+TimeoutStartSec=0
+
+ExecStartPre=-/usr/bin/docker stop dcgm-exporter
+ExecStartPre=-/usr/bin/docker rm dcgm-exporter
+
+ExecStart=/usr/bin/docker run --rm --name dcgm-exporter \
+  --gpus all \
+  --cap-add SYS_ADMIN \
+  -p {{ dcgm_port }}:9400 \
+  {{ dcgm_exporter_image }}
+
+ExecStop=/usr/bin/docker stop dcgm-exporter
+
+[Install]
+WantedBy=multi-user.target
