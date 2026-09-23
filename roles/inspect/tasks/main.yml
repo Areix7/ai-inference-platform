@@ -1,3 +1,43 @@
-#SPDX-License-Identifier: MIT-0
 ---
-# tasks file for inspect
+# Node inspection script. Runs every 5 minutes via cron.
+# Writes Prometheus metrics to textfile collector and a human log.
+
+- name: install inspect script
+  copy:
+    src: ai-platform-inspect.sh
+    dest: /usr/local/bin/ai-platform-inspect.sh
+    owner: root
+    group: root
+    mode: "0755"
+  tags: [inspect]
+
+- name: ensure textfile collector dir exists
+  file:
+    path: /var/lib/node_exporter/textfile_collector
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  tags: [inspect]
+
+- name: deploy inspect cron
+  copy:
+    dest: /etc/cron.d/ai-platform-inspect
+    content: |
+      */5 * * * * root /usr/local/bin/ai-platform-inspect.sh
+    owner: root
+    group: root
+    mode: "0644"
+  tags: [inspect, inspect_cron]
+
+- name: run inspect once now
+  command: /usr/local/bin/ai-platform-inspect.sh
+  register: inspect_run
+  changed_when: false
+  failed_when: false
+  tags: [inspect]
+
+- name: report inspect result
+  debug:
+    msg: "inspect exit code: {{ inspect_run.rc }}"
+  tags: [inspect]
