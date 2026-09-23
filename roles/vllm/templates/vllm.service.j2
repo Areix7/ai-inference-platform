@@ -19,8 +19,8 @@ ExecStart=/usr/bin/docker run --rm --name vllm \
   -v {{ data_dir }}/hf-cache:/root/.cache/huggingface \
   -e HF_HOME=/root/.cache/huggingface \
   {{ vllm_image }} \
-  --model /models/Qwen2.5-7B-Instruct \
-  --served-model-name Qwen2.5-7B-Instruct \
+  --model /models/Qwen3-8B \
+  --served-model-name Qwen3-8B \
   --host {{ vllm_host }} \
   --port {{ vllm_port }} \
   --gpu-memory-utilization {{ vllm_gpu_memory_utilization }} \

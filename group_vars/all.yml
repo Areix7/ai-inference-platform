@@ -6,7 +6,7 @@ data_dir: /root/ai-inference-platform//data
 fallback_data_dir: /opt
 
 # vLLM
-vllm_model: "Qwen/Qwen2.5-7B-Instruct"
+vllm_model: "Qwen/Qwen3-8B"
 vllm_port: 8000
 vllm_host: "0.0.0.0"
 vllm_gpu_memory_utilization: 0.90
