@@ -15,6 +15,7 @@ ExecStart=/usr/bin/docker run --rm --name prometheus \
   --add-host=host.docker.internal:host-gateway \
   -p {{ prometheus_port }}:9090 \
   -v /opt/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro \
+  -v /opt/prometheus/rules:/etc/prometheus/rules:ro \
   -v /opt/prometheus/data:/prometheus \
   {{ prometheus_image }} \
   --config.file=/etc/prometheus/prometheus.yml \

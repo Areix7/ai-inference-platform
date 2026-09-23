@@ -1,0 +1,38 @@
+groups:
+  - name: ai-platform
+    rules:
+      - alert: VLLMDown
+        expr: up{job="vllm"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "vLLM endpoint unreachable"
+          description: "Prometheus cannot scrape vLLM /metrics for 1 minute."
+
+      - alert: GPUTempHigh
+        expr: DCGM_FI_DEV_GPU_TEMP > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "GPU temperature above 85C"
+          description: "GPU {{ $labels.gpu }} at {{ $value }}C on {{ $labels.Hostname }}."
+
+      - alert: GPUMemoryHigh
+        expr: DCGM_FI_DEV_FB_USED / DCGM_FI_DEV_FB_TOTAL > 0.9
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "GPU memory above 90%"
+          description: "GPU {{ $labels.gpu }} memory usage {{ $value | humanizePercentage }}."
+
+      - alert: DiskSpaceLow
+        expr: ai_platform_disk_free_percent < 15
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Root filesystem below 15% free"
+          description: "Node {{ $labels.node }} has {{ $value }}% free on /."

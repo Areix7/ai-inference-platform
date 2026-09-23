@@ -60,6 +60,13 @@
     mode: "0755"
   tags: [monitoring, prometheus]
 
+- name: ensure prometheus rules dir exists
+  file:
+    path: /opt/prometheus/rules
+    state: directory
+    mode: "0755"
+  tags: [monitoring, prometheus]
+
 - name: render prometheus config
   template:
     src: prometheus.yml.j2
@@ -67,6 +74,16 @@
     owner: root
     group: root
     mode: "0644"
+  tags: [monitoring, prometheus]
+
+- name: install prometheus rules
+  copy:
+    src: ai-platform-rules.yml
+    dest: /opt/prometheus/rules/ai-platform.yml
+    owner: root
+    group: root
+    mode: "0644"
+  notify: reload systemd and restart prometheus
   tags: [monitoring, prometheus]
 
 - name: pull prometheus image

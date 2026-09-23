@@ -1,0 +1,31 @@
+{
+  "config": {
+    "url": "http://127.0.0.1:8000/v1/completions",
+    "model": "Qwen3-8B",
+    "concurrency": 10,
+    "requests": 40,
+    "prompt_len": 256,
+    "max_tokens": 128
+  },
+  "summary": {
+    "wall_s": 19.074,
+    "ok": 40,
+    "failed": 0,
+    "rps": 2.1,
+    "tokens": 5120,
+    "tok_per_s": 268.43
+  },
+  "ttft_s": {
+    "p50": 0.0799,
+    "p90": 0.0877,
+    "p99": 0.0884,
+    "mean": 0.0805
+  },
+  "latency_s": {
+    "p50": 4.7663,
+    "p90": 4.7704,
+    "p99": 4.7712,
+    "mean": 4.7668
+  },
+  "errors": {}
+}
