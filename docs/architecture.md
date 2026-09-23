@@ -33,14 +33,14 @@ flowchart TB
 
 ## Roles
 
-Each role is independent. site.yml runs them in order.
+site.yml runs them in order.
 
-    preflight    read-only environment checks before any change
-    nvidia       install driver from the CUDA repo, verify nvidia-smi
-    docker       docker-ce + nvidia-container-toolkit + runtime config
-    vllm         vllm container, systemd unit, model mount
-    monitoring   dcgm-exporter, prometheus, grafana, alert rules
-    inspect      node health check script + cron
+- preflight: read-only checks
+- nvidia: driver + nvidia-smi verify
+- docker: docker-ce + toolkit
+- vllm: container + systemd unit
+- monitoring: dcgm, prometheus, grafana
+- inspect: health check cron
 
 ## Data flow
 
@@ -54,11 +54,11 @@ over HTTP. Prometheus scrapes node_exporter like any other target.
 
 ## Why no Kubernetes
 
-Single GPU node, one service, one operator. K8s would add a control
-plane, an ingress, a storage class, and a CRD for no benefit. systemd
-plus Docker does the same job in 200 lines of Ansible.
+Just one node. One operator. K8s would add a control plane, an
+ingress, a storage class, and a CRD for no benefit. systemd plus
+Docker does the same job in 200 lines of Ansible.
 
-## Why model weights are mounted, not baked
+## Model weights: mounted, not baked
 
 The vLLM image is public and stable. The model changes. Keeping weights
 on the host under data/hf-cache/models/ means:
