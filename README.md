@@ -60,8 +60,8 @@ Sample result, Qwen3-8B on one A10, concurrency 10:
     total p50    4.7663 s
     total p99    4.7712 s
 
-![Alert rules](docs/screenshots/prometheus-rules.png)
 ![vLLM dashboard](docs/screenshots/grafana-vllm-dashboard.png)
+![Alert rules](docs/screenshots/prometheus-rules.png)
 
 ## Alerts
 
