@@ -9,3 +9,4 @@
     - docker
     - vllm
     - monitoring
+    - inspect
